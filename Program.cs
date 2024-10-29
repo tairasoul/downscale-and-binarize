@@ -4,7 +4,7 @@ using System.Text;
 
 if (args.Length < 4)
 {
-	Console.WriteLine("Usage: <program> <input_directory> <output_directory> <frame_width> <frame_height>");
+	Console.WriteLine("Usage: <program> <input_directory> <output_file> <frame_width> <frame_height>");
 	return;
 }
 
@@ -17,7 +17,7 @@ string[] frames = Directory.GetFiles(inputDirectory);
 
 Array.Sort(frames, StringComparer.Ordinal);
 
-string compressedOutputPath = $"{outputDirectory}/frames.gz";
+string compressedOutputPath = outputDirectory;
 
 List<string> allFramesData = [];
 
