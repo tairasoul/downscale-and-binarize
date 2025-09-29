@@ -50,9 +50,9 @@ void ProcessFrame(string path)
   }
   image.ProcessPixelRows(accessor => {
     writer.Write(accessor.Height);
+    writer.Write(accessor.Width);
     for (int y = 0; y < accessor.Height; y++) {
       Span<Rgba32> row = accessor.GetRowSpan(y);
-      writer.Write(row.Length);
       byte packedByte = 0;
       int bitIndex = 7;
       for (int x = 0; x < row.Length; x++) {
