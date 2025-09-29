@@ -57,13 +57,22 @@ void ProcessFrame(string path)
     for (int y = 0; y < accessor.Height; y++) {
       Span<Rgba32> row = accessor.GetRowSpan(y);
       writer.Write(row.Length);
+      byte packedByte = 0;
+      int bitIndex = 7;
       for (int x = 0; x < row.Length; x++) {
         Rgba32 pixel = row[x];
         byte r = (byte)(pixel.R < 128 ? 0 : 255);
         byte g = (byte)(pixel.G < 128 ? 0 : 255);
         byte b = (byte)(pixel.B < 128 ? 0 : 255);
-        int binaryValue = (r == 255 & g == 255 && b == 255) ? 1 : 0;
-        writer.Write(binaryValue);
+        bool binaryValue = r == 255 & g == 255 && b == 255;
+        if (binaryValue)
+          packedByte |= (byte)(1 << bitIndex);
+        bitIndex--;
+        if (bitIndex < 0 || x == row.Length - 1) {
+          writer.Write(packedByte);
+          packedByte = 0;
+          bitIndex = 7;
+        }
       }
     }
   });
