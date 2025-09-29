@@ -48,10 +48,6 @@ void ProcessFrame(string path)
   if (intermediateDirectory != null) {
     image.Save(Path.Join(intermediateDirectory, Path.GetFileName(path)));
   }
-	if (!dimensionsPrinted) {
-    writer.Write(image.Width);
-    writer.Write(image.Height);
-  }
   image.ProcessPixelRows(accessor => {
     writer.Write(accessor.Height);
     for (int y = 0; y < accessor.Height; y++) {
