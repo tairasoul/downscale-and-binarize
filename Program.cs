@@ -1,13 +1,12 @@
 ﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Processors.Filters;
 using MemoryTributaryS;
 using EasyCompressor;
 
-if (args.Length < 4)
+if (args.Length < 5)
 {
-	Console.WriteLine("Usage: <program> <input_directory> <output_file> <frame_width> <frame_height>");
+	Console.WriteLine("Usage: <program> <input_directory> <output_file> <frame_width> <frame_height> <luminance> [write_intermediate_dir]");
 	return;
 }
 
@@ -15,6 +14,14 @@ string inputDirectory = Path.GetFullPath(args[0]);
 string outputDirectory = Path.GetFullPath(args[1]);
 int width = int.Parse(args[2]);
 int height = int.Parse(args[3]);
+float luminance = float.Parse(args[4]);
+string? intermediateDirectory = null;
+if (args.Length == 6) {
+  intermediateDirectory = Path.GetFullPath(args[5]);
+  if (!Directory.Exists(intermediateDirectory)) {
+    Directory.CreateDirectory(intermediateDirectory);
+  }
+}
 
 string[] frames = Directory.GetFiles(inputDirectory);
 
@@ -35,10 +42,12 @@ void ProcessFrame(string path)
   using Image<Rgba32> image = Image.Load<Rgba32>(fileBytes);
   image.Mutate((v) =>
   {
-    BlackWhiteProcessor processor = new();
+    v.BinaryThreshold(luminance);
     v.Resize(new Size(width, height));
-    v.ApplyProcessor(processor);
   });
+  if (intermediateDirectory != null) {
+    image.Save(Path.Join(intermediateDirectory, Path.GetFileName(path)));
+  }
 	if (!dimensionsPrinted) {
     writer.Write(image.Width);
     writer.Write(image.Height);
