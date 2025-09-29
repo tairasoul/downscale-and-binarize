@@ -1,6 +1,9 @@
-﻿using ImageMagick;
-using System.IO.Compression;
-using System.Text;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Processing.Processors.Filters;
+using MemoryTributaryS;
+using EasyCompressor;
 
 if (args.Length < 4)
 {
@@ -10,8 +13,8 @@ if (args.Length < 4)
 
 string inputDirectory = Path.GetFullPath(args[0]);
 string outputDirectory = Path.GetFullPath(args[1]);
-uint width = uint.Parse(args[2]);
-uint height = uint.Parse(args[3]);
+int width = int.Parse(args[2]);
+int height = int.Parse(args[3]);
 
 string[] frames = Directory.GetFiles(inputDirectory);
 
@@ -22,54 +25,53 @@ string compressedOutputPath = outputDirectory;
 List<string> allFramesData = [];
 
 bool dimensionsPrinted = false;
-string size = "";
+using MemoryTributary binaryMemory = new();
+BinaryWriter writer = new(binaryMemory);
 
 void ProcessFrame(string path) 
 {
 	Console.WriteLine($"Processing frame at {path}");
-	MagickImage image = (MagickImage)MagickImage.FromBase64(Convert.ToBase64String(File.ReadAllBytes(path)));
-	image.Resize(width, height);
-	if (!dimensionsPrinted) 
-	{
-		size = $"{image.Width}x{image.Height}";
-		dimensionsPrinted = true;
-	}
-	IPixelCollection<byte> pixels = image.GetPixels();
-	List<string> pixelData = [];
-
-	for (int y = 0; y < image.Height; y++)
-	{
-		List<string> rowData = [];
-		for (int x = 0; x < image.Width; x++)
-		{
-			IPixel<byte> pixelValue = pixels[x, y];
-			IMagickColor<byte> colour = pixelValue.ToColor();
-
-			byte r = (byte)(colour.R < 128 ? 0 : 255);
-			byte g = (byte)(colour.G < 128 ? 0 : 255);
-			byte b = (byte)(colour.B < 128 ? 0 : 255);
-			int binaryValue = (r == 255 && g == 255 && b == 255) ? 1 : 0;
-			rowData.Add(binaryValue.ToString());
-		}
-		pixelData.Add(string.Join("", rowData) + "&");
-	}
-
-	string stringifiedData = string.Join("", pixelData);
-	
-	allFramesData.Add(stringifiedData);
+  byte[] fileBytes = File.ReadAllBytes(path);
+  using Image<Rgba32> image = Image.Load<Rgba32>(fileBytes);
+  image.Mutate((v) =>
+  {
+    BlackWhiteProcessor processor = new();
+    v.Resize(new Size(width, height));
+    v.ApplyProcessor(processor);
+  });
+	if (!dimensionsPrinted) {
+    writer.Write(image.Width);
+    writer.Write(image.Height);
+  }
+  image.ProcessPixelRows(accessor => {
+    writer.Write(accessor.Height);
+    for (int y = 0; y < accessor.Height; y++) {
+      Span<Rgba32> row = accessor.GetRowSpan(y);
+      writer.Write(row.Length);
+      for (int x = 0; x < row.Length; x++) {
+        Rgba32 pixel = row[x];
+        byte r = (byte)(pixel.R < 128 ? 0 : 255);
+        byte g = (byte)(pixel.G < 128 ? 0 : 255);
+        byte b = (byte)(pixel.B < 128 ? 0 : 255);
+        int binaryValue = (r == 255 & g == 255 && b == 255) ? 1 : 0;
+        writer.Write(binaryValue);
+      }
+    }
+  });
 }
+
+writer.Flush();
 
 foreach (string frame in frames) 
 	ProcessFrame(frame);
 
-string finalData = $"{size}-{string.Join(";", allFramesData)}";
+using FileStream stream = File.Open(outputDirectory, FileMode.Create);
 
-byte[] bytes = Encoding.UTF8.GetBytes(finalData);
-using (MemoryStream originalFileStream = new(bytes)) 
-{
-	using FileStream compressedFileStream = new(compressedOutputPath, FileMode.Create);
-	using GZipStream compressionStream = new(compressedFileStream, CompressionLevel.Optimal);
-	originalFileStream.CopyTo(compressionStream);
-}
+binaryMemory.Position = 0;
+DeflateCompressor d = DeflateCompressor.Shared;
+d.Level = System.IO.Compression.CompressionLevel.SmallestSize;
+d.Compress(binaryMemory, stream);
 
-Console.WriteLine($"Compressed file saved to {compressedOutputPath}, frame size {size}");
+//using IronCompressResult result = iron.Compress(Codec.Brotli, binaryMemory.ToArray(), null, CompressionLevel.SmallestSize);
+
+//File.WriteAllBytes(compressedOutputPath, result.AsSpan().ToArray());
