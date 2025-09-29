@@ -80,7 +80,3 @@ binaryMemory.Position = 0;
 DeflateCompressor d = DeflateCompressor.Shared;
 d.Level = System.IO.Compression.CompressionLevel.SmallestSize;
 d.Compress(binaryMemory, stream);
-
-//using IronCompressResult result = iron.Compress(Codec.Brotli, binaryMemory.ToArray(), null, CompressionLevel.SmallestSize);
-
-//File.WriteAllBytes(compressedOutputPath, result.AsSpan().ToArray());
