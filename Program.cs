@@ -31,7 +31,6 @@ string compressedOutputPath = outputDirectory;
 
 List<string> allFramesData = [];
 
-bool dimensionsPrinted = false;
 using MemoryTributary binaryMemory = new();
 BinaryWriter writer = new(binaryMemory);
 
